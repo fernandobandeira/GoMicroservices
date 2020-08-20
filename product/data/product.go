@@ -2,6 +2,7 @@ package data
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"time"
 )
@@ -18,6 +19,11 @@ type Product struct {
 	DeletedOn   string  `json:"-"`
 }
 
+func (p *Product) FromJSON(reader io.Reader) error {
+	decoder := json.NewDecoder(reader)
+	return decoder.Decode(p)
+}
+
 // Products is a collection of Product
 type Products []*Product
 
@@ -27,14 +33,47 @@ type Products []*Product
 // this reduces allocations and the overheads of the service
 //
 // https://golang.org/pkg/encoding/json/#NewEncoder
-func (p *Products) ToJSON(w io.Writer) error {
-	e := json.NewEncoder(w)
-	return e.Encode(p)
+func (p *Products) ToJSON(writer io.Writer) error {
+	encoder := json.NewEncoder(writer)
+	return encoder.Encode(p)
 }
 
 // GetProducts returns a list of products
 func GetProducts() Products {
 	return productList
+}
+
+func AddProduct(p *Product) {
+	p.ID = getNextID()
+	productList = append(productList, p)
+}
+
+func UpdateProduct(id int, p *Product) error {
+	_, pos, err := findProduct(id)
+	if err != nil {
+		return err
+	}
+
+	p.ID = id
+	productList[pos] = p
+	return nil
+}
+
+var ErrProductNotFound = fmt.Errorf("Product not found")
+
+func findProduct(id int) (*Product, int, error) {
+	for pos, product := range productList {
+		if product.ID == id {
+			return product, pos, nil
+		}
+	}
+
+	return nil, -1, ErrProductNotFound
+}
+
+func getNextID() int {
+	product := productList[len(productList)-1]
+	return product.ID + 1
 }
 
 // productList is a hard coded list of products for this
