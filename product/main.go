@@ -3,6 +3,7 @@ package main
 import (
 	"Product/handlers"
 	"context"
+	"github.com/gorilla/mux"
 	"log"
 	"net/http"
 	"os"
@@ -17,8 +18,18 @@ func main() {
 	productHandler := handlers.NewProducts(logger)
 
 	// create a new serve mux and register the handlers
-	serveMux := http.NewServeMux()
-	serveMux.Handle("/", productHandler)
+	serveMux := mux.NewRouter()
+
+	getRouter := serveMux.Methods(http.MethodGet).Subrouter()
+	getRouter.HandleFunc("/", productHandler.GetProducts)
+
+	postRouter := serveMux.Methods(http.MethodPost).Subrouter()
+	postRouter.HandleFunc("/", productHandler.AddProduct)
+	postRouter.Use(productHandler.MiddlewareProductValidation)
+
+	putRouter := serveMux.Methods(http.MethodPut).Subrouter()
+	putRouter.HandleFunc("/{id:[0-9]+}", productHandler.UpdateProduct)
+	putRouter.Use(productHandler.MiddlewareProductValidation)
 
 	// create a new server
 	server := &http.Server{
